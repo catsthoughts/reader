@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useCallback, useLayoutEffect } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import BookList from '../components/BookList';
@@ -9,6 +9,16 @@ import type { Book } from '../types';
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [books, setBooks] = useState<Book[]>([]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={() => navigation.navigate('DictionarySettings')} style={styles.settingsButton}>
+          <Text style={styles.settingsButtonText}>⋯</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   React.useEffect(() => {
     loadBooks();
@@ -106,5 +116,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  settingsButtonText: {
+    fontSize: 22,
+    color: '#1a1a1a',
   },
 });
