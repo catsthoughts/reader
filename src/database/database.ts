@@ -58,6 +58,19 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   await database.execAsync(`
     INSERT OR IGNORE INTO app_settings (key, value) VALUES ('active_languages', 'en');
   `);
+
+  await migrateV1(database);
+}
+
+async function migrateV1(database: SQLite.SQLiteDatabase): Promise<void> {
+  try {
+    const row = await database.getFirstAsync<{ name: string }>(
+      "SELECT name FROM pragma_table_info('books') WHERE name = 'dictionary_language'"
+    );
+    if (!row) {
+      await database.execAsync("ALTER TABLE books ADD COLUMN dictionary_language TEXT");
+    }
+  } catch (_) {}
 }
 
 export function getDictTableName(language: Language): string {
