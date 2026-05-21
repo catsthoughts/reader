@@ -18,6 +18,8 @@ Scan the QR code in Expo Go on iPhone.
 | `App.tsx` | Entry point, `GestureHandlerRootView` + `NavigationContainer` |
 | `src/screens/HomeScreen.tsx` | Home screen — book list, EPUB import |
 | `src/screens/ReaderScreen.tsx` | Reader screen — connects Reader + WordPopup |
+| `src/screens/DictionarySettingsScreen.tsx` | Bilingual dict download/delete, set as default |
+| `src/screens/BookDictionaryConfigScreen.tsx` | Per-book dictionary set selection |
 | `src/components/BookList.tsx` | Book list with FAB `+` button, swipe-to-delete |
 | `src/components/Reader.tsx` | WebView reader, wraps words in `<span>`, double-tap → dictionary |
 | `src/components/WordPopup.tsx` | Dictionary modal (definition + knowledge level 1–5) |
@@ -28,17 +30,20 @@ Scan the QR code in Expo Go on iPhone.
 | `src/utils/epub.ts` | EPUB parsing: metadata, content, image embedding |
 | `src/types/index.ts` | TypeScript types (Book, BookWord, Language, etc.) |
 
-## Languages
+## Dictionaries
 
-Supported: `ru`, `en`, `es`, `ro`, `it`.
+Bilingual FTS5 tables: `dict_en_ru`, `dict_es_ru`, `dict_es_en`, `dict_ro_ru`, `dict_it_ru`.
 
-Dictionaries are created as virtual FTS5 tables: `dict_ru`, `dict_en`, etc.
+JSON source files in `dictionaries/` at repo root — downloaded from GitHub raw URL.
 
 Dictionary import:
 ```typescript
 import { importDictionaryFromJSON } from './src/database/dictionaries';
-await importDictionaryFromJSON('en', [{ word: 'hello', definition: 'hi' }]);
+await importDictionaryFromJSON('en_ru', [{ word: 'hello', definition: 'здравствуйте' }]);
 ```
+
+Defaults stored in `app_settings` key `default_dictionaries` (comma-separated `DictPair` IDs).
+Per-book overrides in `book_dictionaries` table.
 
 ## Important notes
 

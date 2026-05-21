@@ -6,11 +6,7 @@ import { ALL_DICT_PAIRS } from '../types';
 const GITHUB_REPO = 'catsthoughts/reader';
 const DICT_DIR = FileSystem.documentDirectory + 'dicts/';
 
-const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/dictionaries`;
-
-export async function getDictCachePath(dictPair: DictPair): string {
-  return `${DICT_DIR}${dictPair}.json`;
-}
+const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/dictionary-management/dictionaries`;
 
 export async function downloadDictionary(dictPair: DictPair): Promise<void> {
   const url = `${GITHUB_RAW_URL}/${dictPair}.json`;
@@ -19,7 +15,10 @@ export async function downloadDictionary(dictPair: DictPair): Promise<void> {
   await FileSystem.makeDirectoryAsync(DICT_DIR, { intermediates: true });
 
   const download = FileSystem.createDownloadResumable(url, dest);
-  await download.downloadAsync();
+  const result = await download.downloadAsync();
+  if (!result) {
+    throw new Error('Download failed — no response');
+  }
 }
 
 export async function importDictionary(dictPair: DictPair): Promise<number> {

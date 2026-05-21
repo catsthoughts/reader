@@ -105,9 +105,9 @@ function BookCard({ book, onPress, onDelete, onConfig }: { book: Book; onPress: 
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={onConfig} style={styles.configBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.configBtnText}>📖</Text>
-        </TouchableOpacity>
+<TouchableOpacity onPress={onConfig} style={styles.configBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+  <Text style={styles.configBtnText}>⋯</Text>
+</TouchableOpacity>
       </TouchableOpacity>
     </Swipeable>
   );
@@ -227,11 +227,18 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   configBtn: {
-    padding: 8,
-    marginLeft: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   configBtnText: {
-    fontSize: 20,
+    fontSize: 16,
+    color: '#1a1a1a',
+    lineHeight: 18,
   },
   emptyState: {
     flex: 1,
