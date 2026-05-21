@@ -20,15 +20,16 @@ Scan the QR code in Expo Go on iPhone.
 | `src/screens/ReaderScreen.tsx` | Reader screen — connects Reader + WordPopup |
 | `src/screens/DictionarySettingsScreen.tsx` | Bilingual dict download/delete, set as default |
 | `src/screens/BookDictionaryConfigScreen.tsx` | Per-book dictionary set selection |
-| `src/components/BookList.tsx` | Book list with FAB `+` button, swipe-to-delete |
+| `src/components/BookList.tsx` | Book list with FAB `+` button, swipe-to-delete, per-book `⋯` config |
 | `src/components/Reader.tsx` | WebView reader, wraps words in `<span>`, double-tap → dictionary |
 | `src/components/WordPopup.tsx` | Dictionary modal (definition + knowledge level 1–5) |
-| `src/database/database.ts` | SQLite init, FTS5 tables for 5 languages |
+| `src/database/database.ts` | SQLite init, FTS5 tables for 5 bilingual pairs |
 | `src/database/books.ts` | Book CRUD, SELECT with aliases (snake_case → camelCase) |
 | `src/database/dictionaries.ts` | Word lookup via FTS5 MATCH, dictionary import |
 | `src/database/userwords.ts` | Word view tracking, knowledge level |
+| `src/services/dictionaryDownload.ts` | Download bilingual dict JSON from GitHub, import to FTS5 |
 | `src/utils/epub.ts` | EPUB parsing: metadata, content, image embedding |
-| `src/types/index.ts` | TypeScript types (Book, BookWord, Language, etc.) |
+| `src/types/index.ts` | TypeScript types (Book, BookWord, DictPair, etc.) |
 
 ## Dictionaries
 

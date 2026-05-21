@@ -1,6 +1,6 @@
 # EPUB Reader
 
-An iOS EPUB reader app with a built-in FTS5 dictionary and word tracking. Built with Expo SDK 54.
+An iOS EPUB reader app with bilingual FTS5 dictionaries and word tracking. Built with Expo SDK 54.
 
 ## Requirements
 
@@ -22,8 +22,6 @@ npx expo start -c   # -c clears Metro cache
 
 Scan the QR code with your iPhone camera and open in Expo Go.
 
-**Important:** Before testing, shake your phone to open the Expo dev menu and ensure "Fast Refresh" is enabled.
-
 ## How it works
 
 | Feature | Detail |
@@ -34,8 +32,23 @@ Scan the QR code with your iPhone camera and open in Expo Go.
 | Track | Set a knowledge level (1–5) for each word |
 | Highlight | Words are color-coded based on your level |
 
+## Dictionaries
+
+Bilingual pairs downloaded from GitHub raw URL and imported into FTS5 tables.
+
+| Pair | Source → Target |
+|------|----------------|
+| `en_ru` | English → Russian |
+| `es_ru` | Spanish → Russian |
+| `es_en` | Spanish → English |
+| `ro_ru` | Romanian → Russian |
+| `it_ru` | Italian → Russian |
+
+**Per-book config:** tap `⋯` on a book card to choose which dictionaries to search.
+**Defaults:** set in the global Dictionaries screen (`⋯` header button) — used when a book has no custom selection.
+
 ## Notes
 
 - Books are stored in the app's document directory
-- Dictionaries support 5 languages: Russian, English, Spanish, Romanian, Italian
-- Dictionary data must be imported via SQLite FTS5 tables (`dict_ru`, `dict_en`, etc.)
+- Dictionaries are downloaded from `catsthoughts/reader` repo (`dictionaries/` folder)
+- JSON source files in `dictionaries/` at repo root
