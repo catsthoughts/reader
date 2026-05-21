@@ -10,6 +10,7 @@ import {
 import type { DictPair } from '../types';
 import { ALL_DICT_PAIRS, DICT_PAIR_META } from '../types';
 import { getBookDictPairs, setBookDictPairs, getDefaultDictPairs } from '../database/books';
+import { getDictionaryWordCount } from '../database/dictionaries';
 
 interface BookDictionaryConfigScreenProps {
   navigation: any;
@@ -24,6 +25,7 @@ interface BookDictionaryConfigScreenProps {
 export default function BookDictionaryConfigScreen({ navigation, route }: BookDictionaryConfigScreenProps) {
   const { bookId, bookTitle } = route.params;
   const [selected, setSelected] = useState<DictPair[]>([]);
+  const [installedPairs, setInstalledPairs] = useState<DictPair[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -35,7 +37,17 @@ export default function BookDictionaryConfigScreen({ navigation, route }: BookDi
       getBookDictPairs(bookId),
       getDefaultDictPairs(),
     ]);
-    setSelected(bookPairs.length > 0 ? bookPairs : defaultPairs);
+
+    const counts = await Promise.all(
+      ALL_DICT_PAIRS.map((p) => getDictionaryWordCount(p))
+    );
+    const installed = ALL_DICT_PAIRS.filter((_, i) => counts[i] > 0);
+    setInstalledPairs(installed);
+
+    const validSelected = (bookPairs.length > 0 ? bookPairs : defaultPairs)
+      .filter((p) => installed.includes(p));
+
+    setSelected(validSelected.length > 0 ? validSelected : installed.slice(0, 1));
     setLoaded(true);
   }
 
@@ -55,16 +67,35 @@ export default function BookDictionaryConfigScreen({ navigation, route }: BookDi
 
   if (!loaded) return null;
 
+  if (installedPairs.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.heading}>{bookTitle}</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No dictionaries installed</Text>
+          <Text style={styles.emptyText}>
+            Download dictionaries in the main settings to configure them for this book.
+          </Text>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => navigation.navigate('DictionarySettings')}
+          >
+            <Text style={styles.settingsBtnText}>Open Dictionary Settings</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>{bookTitle}</Text>
       <Text style={styles.subheading}>
         Select which dictionaries to search when looking up words in this book.
-        If none selected, global defaults are used.
       </Text>
 
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {ALL_DICT_PAIRS.map((pair) => {
+        {installedPairs.map((pair) => {
           const meta = DICT_PAIR_META[pair];
           const isSelected = selected.includes(pair);
           return (
@@ -185,6 +216,36 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#fff',
     fontSize: 17,
+    fontWeight: '600',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#8e8e93',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  settingsBtn: {
+    backgroundColor: '#4A90D9',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  settingsBtnText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });
