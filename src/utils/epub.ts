@@ -193,14 +193,8 @@ export async function getEpubPages(
 
   const dir = rootFilePath.substring(0, rootFilePath.lastIndexOf('/') + 1);
   const pages: { html: string; positionId: string }[] = [];
-  let startIndex = 0;
 
-  if (position) {
-    const posIndex = spine.findIndex((s) => s.idref === position);
-    if (posIndex >= 0) startIndex = posIndex;
-  }
-
-  for (let i = startIndex; i < spine.length; i++) {
+  for (let i = 0; i < spine.length; i++) {
     const item = manifest[spine[i].idref];
     if (!item) continue;
 
