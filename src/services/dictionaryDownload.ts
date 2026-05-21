@@ -8,6 +8,10 @@ const DICT_DIR = FileSystem.documentDirectory + 'dicts/';
 
 const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/dictionary-management/dictionaries`;
 
+export function getDictCachePath(dictPair: DictPair): string {
+  return `${DICT_DIR}${dictPair}.json`;
+}
+
 export async function downloadDictionary(dictPair: DictPair): Promise<void> {
   const url = `${GITHUB_RAW_URL}/${dictPair}.json`;
   const dest = getDictCachePath(dictPair);
