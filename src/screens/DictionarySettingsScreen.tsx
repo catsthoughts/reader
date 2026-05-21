@@ -7,39 +7,46 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Switch,
 } from 'react-native';
 import type { Language, DictStatus } from '../types';
 import { getAllLanguageStatus, downloadAndImport, deleteCachedDict } from '../services/dictionaryDownload';
-import { getDefaultLanguage, setDefaultLanguage } from '../database/books';
+import { getActiveLanguages, setActiveLanguages } from '../database/books';
 
-const LANG_LABELS: Record<Language, string> = {
-  en: 'English',
-  ru: 'Russian',
-  es: 'Spanish',
-  ro: 'Romanian',
-  it: 'Italian',
-};
+const LANG: { key: Language; label: string; flag: string }[] = [
+  { key: 'en', label: 'English', flag: '🇬🇧' },
+  { key: 'ru', label: 'Russian', flag: '🇷🇺' },
+  { key: 'es', label: 'Spanish', flag: '🇪🇸' },
+  { key: 'ro', label: 'Romanian', flag: '🇷🇴' },
+  { key: 'it', label: 'Italian', flag: '🇮🇹' },
+];
 
 export default function DictionarySettingsScreen() {
   const [statuses, setStatuses] = useState<DictStatus[]>([]);
-  const [defaultLang, setDefaultLang] = useState<Language>('en');
+  const [activeLangs, setActiveLangs] = useState<Language[]>(['en']);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<Language | null>(null);
 
-  const loadStatuses = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const [stats, def] = await Promise.all([
+    const [stats, active] = await Promise.all([
       getAllLanguageStatus(),
-      getDefaultLanguage(),
+      getActiveLanguages(),
     ]);
     setStatuses(stats);
-    setDefaultLang(def);
+    setActiveLangs(active);
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadStatuses();
-  }, [loadStatuses]);
+  useEffect(() => { load(); }, [load]);
+
+  const toggleActive = useCallback(async (lang: Language) => {
+    const next = activeLangs.includes(lang)
+      ? activeLangs.filter((l) => l !== lang)
+      : [...activeLangs, lang];
+    setActiveLangs(next);
+    await setActiveLanguages(next);
+  }, [activeLangs]);
 
   const handleDownload = useCallback(async (lang: Language) => {
     setWorking(lang);
@@ -51,19 +58,20 @@ export default function DictionarySettingsScreen() {
           )
         );
       });
-      await loadStatuses();
-      Alert.alert('Done', `${LANG_LABELS[lang]} dictionary: ${count} words imported`);
+      await load();
+      Alert.alert('Done', `${LANG.find((l) => l.key === lang)?.label} dictionary: ${count.toLocaleString()} words imported`);
     } catch (err: any) {
-      Alert.alert('Error', `Failed to download ${LANG_LABELS[lang]} dictionary: ${err.message}`);
+      Alert.alert('Error', `Failed to download: ${err.message}`);
     } finally {
       setWorking(null);
     }
-  }, [loadStatuses]);
+  }, [load]);
 
   const handleDelete = useCallback(async (lang: Language) => {
+    const label = LANG.find((l) => l.key === lang)?.label;
     Alert.alert(
       'Delete dictionary',
-      `Remove ${LANG_LABELS[lang]} dictionary?`,
+      `Remove ${label}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -71,17 +79,12 @@ export default function DictionarySettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await deleteCachedDict(lang);
-            await loadStatuses();
+            await load();
           },
         },
       ]
     );
-  }, [loadStatuses]);
-
-  const handleSetDefault = useCallback(async (lang: Language) => {
-    await setDefaultLanguage(lang);
-    setDefaultLang(lang);
-  }, []);
+  }, [load]);
 
   if (loading) {
     return (
@@ -93,58 +96,70 @@ export default function DictionarySettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>DEFAULT LANGUAGE</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.defaultRow}>
-          {(['en', 'ru', 'es', 'ro', 'it'] as Language[]).map((lang) => (
-            <TouchableOpacity
-              key={lang}
-              style={[styles.defaultChip, defaultLang === lang && styles.defaultChipActive]}
-              onPress={() => handleSetDefault(lang)}
-            >
-              <Text style={[styles.defaultChipText, defaultLang === lang && styles.defaultChipTextActive]}>
-                {LANG_LABELS[lang]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <Text style={styles.hint}>
-          Used when a book has no specific dictionary assigned
-        </Text>
-      </View>
+      <Text style={styles.heading}>DICTIONARIES</Text>
+      <Text style={styles.subheading}>
+        Active dictionaries are searched when looking up words.
+        Enable multiple to search across languages.
+      </Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>DICTIONARIES</Text>
-        {statuses.map((s) => (
-          <View key={s.language} style={styles.dictRow}>
-            <View style={styles.dictInfo}>
-              <Text style={styles.dictLang}>{LANG_LABELS[s.language]}</Text>
-              <Text style={styles.dictCount}>
-                {s.wordCount > 0 ? `${s.wordCount.toLocaleString()} words` : 'Not installed'}
-              </Text>
+      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+        {LANG.map(({ key, label, flag }) => {
+          const status = statuses.find((s) => s.language === key);
+          const isActive = activeLangs.includes(key);
+          const hasWords = (status?.wordCount ?? 0) > 0;
+          const isWorking = working === key;
+
+          return (
+            <View key={key} style={[styles.card, isActive && styles.cardActive]}>
+              <View style={styles.cardLeft}>
+                <Text style={styles.flag}>{flag}</Text>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.langName}>{label}</Text>
+                  <Text style={styles.langStatus}>
+                    {isWorking
+                      ? 'Working...'
+                      : hasWords
+                        ? `${status!.wordCount.toLocaleString()} words`
+                        : 'Not installed'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.cardRight}>
+                {isWorking ? (
+                  <ActivityIndicator size="small" color="#4A90D9" />
+                ) : hasWords ? (
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => handleDelete(key)}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.downloadBtn}
+                    onPress={() => handleDownload(key)}
+                  >
+                    <Text style={styles.downloadBtnText}>Download</Text>
+                  </TouchableOpacity>
+                )}
+
+                {hasWords && (
+                  <View style={styles.switchWrap}>
+                    <Switch
+                      value={isActive}
+                      onValueChange={() => toggleActive(key)}
+                      trackColor={{ false: '#e0e0e0', true: '#4A90D9' }}
+                      thumbColor={isActive ? '#fff' : '#f4f3f4'}
+                      ios_backgroundColor="#e0e0e0"
+                    />
+                  </View>
+                )}
+              </View>
             </View>
-            <View style={styles.dictActions}>
-              {working === s.language ? (
-                <ActivityIndicator size="small" color="#4A90D9" />
-              ) : s.wordCount > 0 ? (
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(s.language)}
-                >
-                  <Text style={styles.deleteBtnText}>Delete</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.downloadBtn}
-                  onPress={() => handleDownload(s.language)}
-                >
-                  <Text style={styles.downloadBtnText}>Download</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ))}
-      </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -160,95 +175,88 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  section: {
-    marginBottom: 24,
+  heading: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
-  sectionTitle: {
+  subheading: {
     fontSize: 13,
-    fontWeight: '600',
     color: '#8e8e93',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    textTransform: 'uppercase',
+    lineHeight: 18,
+    marginBottom: 20,
   },
-  defaultRow: {
-    flexDirection: 'row',
+  list: {
+    flex: 1,
   },
-  defaultChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  defaultChipActive: {
-    backgroundColor: '#4A90D9',
-    borderColor: '#4A90D9',
-  },
-  defaultChipText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  defaultChipTextActive: {
-    color: '#fff',
-  },
-  hint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 8,
-  },
-  dictRow: {
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  dictInfo: {
+  cardActive: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90D9',
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  dictLang: {
-    fontSize: 16,
+  flag: {
+    fontSize: 28,
+    marginRight: 14,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  langName: {
+    fontSize: 17,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 2,
   },
-  dictCount: {
+  langStatus: {
     fontSize: 13,
     color: '#8e8e93',
   },
-  dictActions: {
-    marginLeft: 12,
+  cardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  switchWrap: {
+    marginLeft: 4,
   },
   downloadBtn: {
     backgroundColor: '#4A90D9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   downloadBtnText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   deleteBtn: {
     backgroundColor: '#f0f0f0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   deleteBtnText: {
     color: '#FF3B30',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

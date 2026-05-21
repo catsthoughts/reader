@@ -14,6 +14,17 @@ export async function lookupWord(
   return row ?? null;
 }
 
+export async function lookupWordInLanguages(
+  word: string,
+  languages: Language[]
+): Promise<{ entry: DictionaryEntry; language: Language } | null> {
+  for (const lang of languages) {
+    const entry = await lookupWord(word, lang);
+    if (entry) return { entry, language: lang };
+  }
+  return null;
+}
+
 export async function bulkLookupWords(
   words: string[],
   language: Language

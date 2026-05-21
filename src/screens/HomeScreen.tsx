@@ -17,7 +17,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onPress={() => navigation.navigate('DictionarySettings')}
           style={styles.settingsButton}
         >
-          <Text style={styles.settingsButtonText}>📖</Text>
+          <Text style={styles.settingsButtonText}>⚙️</Text>
         </TouchableOpacity>
       ),
     });

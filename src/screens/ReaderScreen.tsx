@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import Reader from '../components/Reader';
 import WordPopup from '../components/WordPopup';
-import { getBookById, updateBookProgress, getDefaultLanguage, updateBookLanguage } from '../database/books';
-import { lookupWord } from '../database/dictionaries';
+import { getBookById, updateBookProgress, getActiveLanguages, updateBookLanguage } from '../database/books';
+import { lookupWordInLanguages, lookupWord } from '../database/dictionaries';
 import { getUserWord, upsertUserWord, updateKnowledgeLevel, getAllUserWords } from '../database/userwords';
 import type { Book, Language, DictionaryEntry, BookWord, WordLookupResult } from '../types';
 
@@ -42,7 +42,9 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
   const [dictionaryEntry, setDictionaryEntry] = useState<DictionaryEntry | null>(null);
   const [userWord, setUserWord] = useState<BookWord | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
+  const [activeLanguages, setActiveLanguages] = useState<Language[]>(['en']);
   const [knownWords, setKnownWords] = useState<Record<string, number>>({});
+  const [lookupLanguage, setLookupLanguage] = useState<Language | null>(null);
 
   useEffect(() => {
     loadBook();
@@ -57,9 +59,11 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
       navigation.setOptions({
         title: book.title,
         headerRight: () => (
-          <TouchableOpacity onPress={handleLanguagePicker} style={styles.langButton}>
-            <Text style={styles.langButtonText}>{LANG_LABELS[currentLanguage]}</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={handleLanguagePicker} style={styles.langButton}>
+              <Text style={styles.langButtonText}>{LANG_LABELS[currentLanguage]}</Text>
+            </TouchableOpacity>
+          </View>
         ),
       });
     }
@@ -80,8 +84,9 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
     const loadedBook = await getBookById(bookId);
     if (loadedBook) {
       setBook(loadedBook);
-      const def = await getDefaultLanguage();
-      setCurrentLanguage((loadedBook.dictionaryLanguage as Language) || def);
+      const active = await getActiveLanguages();
+      setActiveLanguages(active);
+      setCurrentLanguage((loadedBook.dictionaryLanguage as Language) || active[0] || 'en');
     }
   }
 
@@ -105,7 +110,7 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
     } else {
       Alert.alert(
         'Dictionary language',
-        null,
+        undefined,
         ALL_LANGUAGES.map((l) => ({
           text: LANG_LABELS[l],
           onPress: () => changeLanguage(l),
@@ -124,18 +129,28 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
   const handleWordLookup = useCallback(
     async (word: string): Promise<WordLookupResult | null> => {
       try {
-        const dictEntry = await lookupWord(word, currentLanguage);
-        const uWord = await getUserWord(word, currentLanguage);
+        const searchLangs = [
+          currentLanguage,
+          ...activeLanguages.filter((l) => l !== currentLanguage),
+        ];
 
-        await upsertUserWord(word, currentLanguage);
+        const found = await lookupWordInLanguages(word, searchLangs);
+        const dictLanguage = found?.language ?? currentLanguage;
 
-        const updatedUserWord = await getUserWord(word, currentLanguage);
+        const dictEntry = found?.entry ?? null;
+        const uWord = await getUserWord(word, dictLanguage);
+        await upsertUserWord(word, dictLanguage);
+        const updatedUserWord = await getUserWord(word, dictLanguage);
 
         setSelectedWord(word);
         setDictionaryEntry(dictEntry);
         setUserWord(updatedUserWord);
+        setLookupLanguage(dictLanguage);
         setPopupVisible(true);
-        setKnownWords((prev) => ({ ...prev, [word.toLowerCase()]: updatedUserWord?.knowledgeLevel ?? 1 }));
+
+        if (dictLanguage === currentLanguage) {
+          setKnownWords((prev) => ({ ...prev, [word.toLowerCase()]: updatedUserWord?.knowledgeLevel ?? 1 }));
+        }
 
         return {
           dictionary: dictEntry,
@@ -146,20 +161,23 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
         return null;
       }
     },
-    [currentLanguage]
+    [currentLanguage, activeLanguages]
   );
 
   const handleKnowledgeLevelChange = useCallback(
     async (level: 1 | 2 | 3 | 4 | 5) => {
+      const lang = lookupLanguage ?? currentLanguage;
       try {
-        await updateKnowledgeLevel(selectedWord, currentLanguage, level);
+        await updateKnowledgeLevel(selectedWord, lang, level);
         setUserWord((prev) => (prev ? { ...prev, knowledgeLevel: level } : prev));
-        setKnownWords((prev) => ({ ...prev, [selectedWord.toLowerCase()]: level }));
+        if (lang === currentLanguage) {
+          setKnownWords((prev) => ({ ...prev, [selectedWord.toLowerCase()]: level }));
+        }
       } catch (err) {
         console.error('Failed to update knowledge level:', err);
       }
     },
-    [selectedWord, currentLanguage]
+    [selectedWord, currentLanguage, lookupLanguage]
   );
 
   const handlePositionChange = useCallback(
@@ -220,6 +238,10 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   langButton: {
     paddingVertical: 4,

@@ -79,18 +79,19 @@ export async function deleteBook(id: number): Promise<void> {
   await db.runAsync('DELETE FROM books WHERE id = ?', [id]);
 }
 
-export async function getDefaultLanguage(): Promise<Language> {
+export async function getActiveLanguages(): Promise<Language[]> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ value: string }>(
-    "SELECT value FROM app_settings WHERE key = 'default_language'"
+    "SELECT value FROM app_settings WHERE key = 'active_languages'"
   );
-  return (row?.value as Language) || 'en';
+  if (!row?.value) return ['en'];
+  return row.value.split(',').filter(Boolean) as Language[];
 }
 
-export async function setDefaultLanguage(language: Language): Promise<void> {
+export async function setActiveLanguages(languages: Language[]): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
-    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('default_language', ?)",
-    [language]
+    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('active_languages', ?)",
+    [languages.join(',')]
   );
 }

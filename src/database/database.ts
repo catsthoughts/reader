@@ -56,7 +56,7 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   `);
 
   await database.execAsync(`
-    INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_language', 'en');
+    INSERT OR IGNORE INTO app_settings (key, value) VALUES ('active_languages', 'en');
   `);
 }
 
