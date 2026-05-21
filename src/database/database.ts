@@ -43,8 +43,20 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
       cover_path TEXT,
       current_position TEXT,
       last_opened TEXT DEFAULT (datetime('now')),
-      progress REAL DEFAULT 0
+      progress REAL DEFAULT 0,
+      dictionary_language TEXT
     );
+  `);
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
+  await database.execAsync(`
+    INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_language', 'en');
   `);
 }
 

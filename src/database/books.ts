@@ -1,11 +1,14 @@
 import { getDatabase } from './database';
-import type { Book } from '../types';
+import type { Book, Language } from '../types';
+
+const BOOK_COLUMNS = `id, title, author, file_path as filePath, cover_path as coverPath,
+  current_position as currentPosition, last_opened as lastOpened, progress,
+  dictionary_language as dictionaryLanguage`;
 
 export async function getAllBooks(): Promise<Book[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Book>(
-    `SELECT id, title, author, file_path as filePath, cover_path as coverPath,
-            current_position as currentPosition, last_opened as lastOpened, progress
+    `SELECT ${BOOK_COLUMNS}
      FROM books ORDER BY last_opened DESC`
   );
   return rows;
@@ -14,8 +17,7 @@ export async function getAllBooks(): Promise<Book[]> {
 export async function getBookById(id: number): Promise<Book | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Book>(
-    `SELECT id, title, author, file_path as filePath, cover_path as coverPath,
-            current_position as currentPosition, last_opened as lastOpened, progress
+    `SELECT ${BOOK_COLUMNS}
      FROM books WHERE id = ?`,
     [id]
   );
@@ -61,7 +63,34 @@ export async function updateBookProgress(
   );
 }
 
+export async function updateBookLanguage(
+  id: number,
+  language: Language | null
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    "UPDATE books SET dictionary_language = ? WHERE id = ?",
+    [language, id]
+  );
+}
+
 export async function deleteBook(id: number): Promise<void> {
   const db = await getDatabase();
   await db.runAsync('DELETE FROM books WHERE id = ?', [id]);
+}
+
+export async function getDefaultLanguage(): Promise<Language> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = 'default_language'"
+  );
+  return (row?.value as Language) || 'en';
+}
+
+export async function setDefaultLanguage(language: Language): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('default_language', ?)",
+    [language]
+  );
 }

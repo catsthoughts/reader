@@ -9,6 +9,7 @@ export interface Book {
   currentPosition: string | null;
   lastOpened: string;
   progress: number;
+  dictionaryLanguage: string | null;
 }
 
 export interface BookWord {
@@ -30,7 +31,15 @@ export interface WordLookupResult {
   userWord: BookWord | null;
 }
 
+export interface DictStatus {
+  language: Language;
+  wordCount: number;
+  downloading: boolean;
+  error?: string;
+}
+
 export type RootStackParamList = {
   Home: undefined;
   Reader: { bookId: number };
+  DictionarySettings: undefined;
 };

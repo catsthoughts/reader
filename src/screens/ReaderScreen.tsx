@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  ActionSheetIOS,
+  Platform,
+  Alert,
+} from 'react-native';
 import Reader from '../components/Reader';
 import WordPopup from '../components/WordPopup';
-import { getBookById, updateBookProgress } from '../database/books';
+import { getBookById, updateBookProgress, getDefaultLanguage, updateBookLanguage } from '../database/books';
 import { lookupWord } from '../database/dictionaries';
 import { getUserWord, upsertUserWord, updateKnowledgeLevel, getAllUserWords } from '../database/userwords';
 import type { Book, Language, DictionaryEntry, BookWord, WordLookupResult } from '../types';
+
+const LANG_LABELS: Record<Language, string> = {
+  en: 'English',
+  ru: 'Russian',
+  es: 'Spanish',
+  ro: 'Romanian',
+  it: 'Italian',
+};
+
+const ALL_LANGUAGES: Language[] = ['en', 'ru', 'es', 'ro', 'it'];
 
 interface ReaderScreenProps {
   navigation: any;
@@ -34,6 +52,19 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
     loadKnownWords();
   }, [currentLanguage]);
 
+  useEffect(() => {
+    if (book) {
+      navigation.setOptions({
+        title: book.title,
+        headerRight: () => (
+          <TouchableOpacity onPress={handleLanguagePicker} style={styles.langButton}>
+            <Text style={styles.langButtonText}>{LANG_LABELS[currentLanguage]}</Text>
+          </TouchableOpacity>
+        ),
+      });
+    }
+  }, [book, currentLanguage, navigation]);
+
   async function loadKnownWords() {
     try {
       const words = await getAllUserWords(currentLanguage);
@@ -48,9 +79,45 @@ export default function ReaderScreen({ navigation, route }: ReaderScreenProps) {
   async function loadBook() {
     const loadedBook = await getBookById(bookId);
     if (loadedBook) {
-      console.log('Loaded book:', JSON.stringify(loadedBook));
       setBook(loadedBook);
-      navigation.setOptions({ title: loadedBook.title });
+      const def = await getDefaultLanguage();
+      setCurrentLanguage((loadedBook.dictionaryLanguage as Language) || def);
+    }
+  }
+
+  const handleLanguagePicker = useCallback(() => {
+    const labels = ALL_LANGUAGES.map((l) => LANG_LABELS[l]);
+    const cancelIndex = labels.length;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...labels, 'Cancel'],
+          cancelButtonIndex: cancelIndex,
+          title: 'Dictionary language',
+        },
+        (index) => {
+          if (index < cancelIndex) {
+            changeLanguage(ALL_LANGUAGES[index]);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Dictionary language',
+        null,
+        ALL_LANGUAGES.map((l) => ({
+          text: LANG_LABELS[l],
+          onPress: () => changeLanguage(l),
+        })).concat({ text: 'Cancel', style: 'cancel' })
+      );
+    }
+  }, []);
+
+  async function changeLanguage(lang: Language) {
+    setCurrentLanguage(lang);
+    if (book) {
+      await updateBookLanguage(book.id, lang);
     }
   }
 
@@ -153,5 +220,16 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
+  },
+  langButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#f0f0f0',
+  },
+  langButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A90D9',
   },
 });
