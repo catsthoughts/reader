@@ -8,12 +8,11 @@ import {
   Dimensions,
 } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import type { Language, WordLookupResult } from '../types';
+import type { WordLookupResult } from '../types';
 import { getEpubPages } from '../utils/epub';
 
 interface ReaderProps {
   filePath: string;
-  language: Language;
   currentPosition?: string;
   onPositionChange: (positionId: string, progress: number) => void;
   onWordLookup: (word: string) => Promise<WordLookupResult | null>;
@@ -144,7 +143,6 @@ const SWIPE_THRESHOLD = 60;
 
 export default function Reader({
   filePath,
-  language,
   currentPosition,
   onPositionChange,
   onWordLookup,

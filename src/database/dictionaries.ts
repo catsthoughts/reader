@@ -1,12 +1,12 @@
 import { getDatabase, getDictTableName } from './database';
-import type { Language, DictionaryEntry } from '../types';
+import type { DictPair, DictionaryEntry } from '../types';
 
 export async function lookupWord(
   word: string,
-  language: Language
+  dictPair: DictPair
 ): Promise<DictionaryEntry | null> {
   const db = await getDatabase();
-  const table = getDictTableName(language);
+  const table = getDictTableName(dictPair);
   const row = await db.getFirstAsync<{ word: string; definition: string }>(
     `SELECT word, definition FROM ${table} WHERE word MATCH ? LIMIT 1`,
     [word]
@@ -14,23 +14,23 @@ export async function lookupWord(
   return row ?? null;
 }
 
-export async function lookupWordInLanguages(
+export async function lookupWordInDictPairs(
   word: string,
-  languages: Language[]
-): Promise<{ entry: DictionaryEntry; language: Language } | null> {
-  for (const lang of languages) {
-    const entry = await lookupWord(word, lang);
-    if (entry) return { entry, language: lang };
+  dictPairs: DictPair[]
+): Promise<{ entry: DictionaryEntry; dictPair: DictPair } | null> {
+  for (const pair of dictPairs) {
+    const entry = await lookupWord(word, pair);
+    if (entry) return { entry, dictPair: pair };
   }
   return null;
 }
 
 export async function bulkLookupWords(
   words: string[],
-  language: Language
+  dictPair: DictPair
 ): Promise<Map<string, DictionaryEntry>> {
   const db = await getDatabase();
-  const table = getDictTableName(language);
+  const table = getDictTableName(dictPair);
   const result = new Map<string, DictionaryEntry>();
 
   const uniqueWords = [...new Set(words.map((w) => w.toLowerCase()))];
@@ -50,11 +50,11 @@ export async function bulkLookupWords(
 }
 
 export async function insertDictionaryEntries(
-  language: Language,
+  dictPair: DictPair,
   entries: DictionaryEntry[]
 ): Promise<void> {
   const db = await getDatabase();
-  const table = getDictTableName(language);
+  const table = getDictTableName(dictPair);
 
   for (const entry of entries) {
     await db.runAsync(
@@ -65,11 +65,11 @@ export async function insertDictionaryEntries(
 }
 
 export async function importDictionaryFromJSON(
-  language: Language,
+  dictPair: DictPair,
   entries: DictionaryEntry[]
 ): Promise<number> {
   const db = await getDatabase();
-  const table = getDictTableName(language);
+  const table = getDictTableName(dictPair);
 
   await db.execAsync(`DELETE FROM ${table};`);
 
@@ -86,10 +86,10 @@ export async function importDictionaryFromJSON(
 }
 
 export async function getDictionaryWordCount(
-  language: Language
+  dictPair: DictPair
 ): Promise<number> {
   const db = await getDatabase();
-  const table = getDictTableName(language);
+  const table = getDictTableName(dictPair);
   const row = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM ${table}`
   );

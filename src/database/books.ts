@@ -1,9 +1,8 @@
 import { getDatabase } from './database';
-import type { Book, Language } from '../types';
+import type { Book, DictPair } from '../types';
 
 const BOOK_COLUMNS = `id, title, author, file_path as filePath, cover_path as coverPath,
-  current_position as currentPosition, last_opened as lastOpened, progress,
-  dictionary_language as dictionaryLanguage`;
+  current_position as currentPosition, last_opened as lastOpened, progress`;
 
 export async function getAllBooks(): Promise<Book[]> {
   const db = await getDatabase();
@@ -63,35 +62,47 @@ export async function updateBookProgress(
   );
 }
 
-export async function updateBookLanguage(
-  id: number,
-  language: Language | null
-): Promise<void> {
-  const db = await getDatabase();
-  await db.runAsync(
-    "UPDATE books SET dictionary_language = ? WHERE id = ?",
-    [language, id]
-  );
-}
-
 export async function deleteBook(id: number): Promise<void> {
   const db = await getDatabase();
   await db.runAsync('DELETE FROM books WHERE id = ?', [id]);
 }
 
-export async function getActiveLanguages(): Promise<Language[]> {
+export async function getBookDictPairs(bookId: number): Promise<DictPair[]> {
   const db = await getDatabase();
-  const row = await db.getFirstAsync<{ value: string }>(
-    "SELECT value FROM app_settings WHERE key = 'active_languages'"
+  const rows = await db.getAllAsync<{ dict_pair: string }>(
+    'SELECT dict_pair FROM book_dictionaries WHERE book_id = ?',
+    [bookId]
   );
-  if (!row?.value) return ['en'];
-  return row.value.split(',').filter(Boolean) as Language[];
+  return rows.map((r) => r.dict_pair as DictPair);
 }
 
-export async function setActiveLanguages(languages: Language[]): Promise<void> {
+export async function setBookDictPairs(
+  bookId: number,
+  dictPairs: DictPair[]
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM book_dictionaries WHERE book_id = ?', [bookId]);
+  for (const pair of dictPairs) {
+    await db.runAsync(
+      'INSERT INTO book_dictionaries (book_id, dict_pair) VALUES (?, ?)',
+      [bookId, pair]
+    );
+  }
+}
+
+export async function getDefaultDictPairs(): Promise<DictPair[]> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = 'default_dictionaries'"
+  );
+  if (!row?.value) return ['en_ru'];
+  return row.value.split(',').filter(Boolean) as DictPair[];
+}
+
+export async function setDefaultDictPairs(pairs: DictPair[]): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
-    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('active_languages', ?)",
-    [languages.join(',')]
+    "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('default_dictionaries', ?)",
+    [pairs.join(',')]
   );
 }

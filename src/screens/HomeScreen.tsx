@@ -44,8 +44,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         copyToCacheDirectory: true,
       });
 
-      console.log('Picker result:', JSON.stringify(result).slice(0, 500));
-
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
       const file = result.assets[0];
@@ -55,10 +53,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       }
 
       let sourceUri = file.uri;
-      console.log('Selected file URI:', sourceUri);
-
       const metadata = await parseEpubMetadata(sourceUri);
-      console.log('Parsed metadata:', JSON.stringify(metadata));
 
       const documentsDir = FileSystem.documentDirectory + 'books/';
       await FileSystem.makeDirectoryAsync(documentsDir, { intermediates: true });
@@ -66,7 +61,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       const destPath = documentsDir + fileName;
 
       await FileSystem.copyAsync({ from: sourceUri, to: destPath });
-      console.log('Copied to destPath:', destPath);
 
       const bookId = await upsertBook({
         title: metadata.title,
@@ -74,8 +68,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         filePath: destPath,
         coverPath: metadata.coverPath,
       });
-
-      console.log('Book saved with ID:', bookId);
 
       if (bookId) {
         await loadBooks();
@@ -90,6 +82,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const handleBookPress = useCallback(
     (book: Book) => {
       navigation.navigate('Reader', { bookId: book.id });
+    },
+    [navigation]
+  );
+
+  const handleBookConfig = useCallback(
+    (book: Book) => {
+      navigation.navigate('BookDictionaryConfig', { bookId: book.id, bookTitle: book.title });
     },
     [navigation]
   );
@@ -111,6 +110,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onBookPress={handleBookPress}
         onAddBook={handleAddBook}
         onDeleteBook={handleDeleteBook}
+        onBookConfig={handleBookConfig}
       />
     </View>
   );

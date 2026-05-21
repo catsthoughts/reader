@@ -17,6 +17,7 @@ interface BookListProps {
   onBookPress: (book: Book) => void;
   onAddBook: () => void;
   onDeleteBook: (book: Book) => void;
+  onBookConfig: (book: Book) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -32,7 +33,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-US');
 }
 
-function BookCard({ book, onPress, onDelete }: { book: Book; onPress: () => void; onDelete: () => void }) {
+function BookCard({ book, onPress, onDelete, onConfig }: { book: Book; onPress: () => void; onDelete: () => void; onConfig: () => void }) {
   const swipeableRef = useRef<Swipeable>(null);
 
   const renderRightActions = (
@@ -104,12 +105,15 @@ function BookCard({ book, onPress, onDelete }: { book: Book; onPress: () => void
             </View>
           )}
         </View>
+        <TouchableOpacity onPress={onConfig} style={styles.configBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.configBtnText}>📖</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Swipeable>
   );
 }
 
-export default function BookList({ books, onBookPress, onAddBook, onDeleteBook }: BookListProps) {
+export default function BookList({ books, onBookPress, onAddBook, onDeleteBook, onBookConfig }: BookListProps) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
@@ -120,6 +124,7 @@ export default function BookList({ books, onBookPress, onAddBook, onDeleteBook }
               book={item}
               onPress={() => onBookPress(item)}
               onDelete={() => onDeleteBook(item)}
+              onConfig={() => onBookConfig(item)}
             />
           )}
           keyExtractor={(item) => String(item.id)}
@@ -163,6 +168,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    alignItems: 'center',
   },
   cover: {
     width: 70,
@@ -219,6 +225,13 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#4A90D9',
     borderRadius: 2,
+  },
+  configBtn: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  configBtnText: {
+    fontSize: 20,
   },
   emptyState: {
     flex: 1,

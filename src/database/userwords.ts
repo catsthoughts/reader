@@ -1,9 +1,9 @@
 import { getDatabase } from './database';
-import type { Language, BookWord } from '../types';
+import type { BookWord } from '../types';
 
 export async function upsertUserWord(
   word: string,
-  language: Language,
+  language: string,
   knowledgeLevel?: 1 | 2 | 3 | 4 | 5
 ): Promise<void> {
   const db = await getDatabase();
@@ -34,7 +34,7 @@ export async function upsertUserWord(
 
 export async function getUserWord(
   word: string,
-  language: Language
+  language: string
 ): Promise<BookWord | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<BookWord>(
@@ -47,7 +47,7 @@ export async function getUserWord(
 
 export async function updateKnowledgeLevel(
   word: string,
-  language: Language,
+  language: string,
   level: 1 | 2 | 3 | 4 | 5
 ): Promise<void> {
   const db = await getDatabase();
@@ -57,7 +57,7 @@ export async function updateKnowledgeLevel(
   );
 }
 
-export async function getAllUserWords(language: Language): Promise<BookWord[]> {
+export async function getAllUserWords(language: string): Promise<BookWord[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<BookWord>(
     `SELECT id, word, language, view_count as viewCount, knowledge_level as knowledgeLevel, last_viewed as lastViewed
@@ -68,7 +68,7 @@ export async function getAllUserWords(language: Language): Promise<BookWord[]> {
 }
 
 export async function getRecentUserWords(
-  language: Language,
+  language: string,
   limit: number = 50
 ): Promise<BookWord[]> {
   const db = await getDatabase();
@@ -80,7 +80,7 @@ export async function getRecentUserWords(
   return rows;
 }
 
-export async function getKnownWordsCount(language: Language): Promise<number> {
+export async function getKnownWordsCount(language: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ count: number }>(
     'SELECT COUNT(*) as count FROM user_words WHERE language = ? AND knowledge_level >= 4',

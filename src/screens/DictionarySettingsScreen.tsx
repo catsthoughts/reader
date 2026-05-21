@@ -7,59 +7,52 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Switch,
 } from 'react-native';
-import type { Language, DictStatus } from '../types';
-import { getAllLanguageStatus, downloadAndImport, deleteCachedDict } from '../services/dictionaryDownload';
-import { getActiveLanguages, setActiveLanguages } from '../database/books';
-
-const LANG: { key: Language; label: string; flag: string }[] = [
-  { key: 'en', label: 'English', flag: '🇬🇧' },
-  { key: 'ru', label: 'Russian', flag: '🇷🇺' },
-  { key: 'es', label: 'Spanish', flag: '🇪🇸' },
-  { key: 'ro', label: 'Romanian', flag: '🇷🇴' },
-  { key: 'it', label: 'Italian', flag: '🇮🇹' },
-];
+import type { DictPair, DictStatus } from '../types';
+import { ALL_DICT_PAIRS, DICT_PAIR_META } from '../types';
+import { getAllDictStatus, downloadAndImport, deleteCachedDict } from '../services/dictionaryDownload';
+import { getDefaultDictPairs, setDefaultDictPairs } from '../database/books';
 
 export default function DictionarySettingsScreen() {
   const [statuses, setStatuses] = useState<DictStatus[]>([]);
-  const [activeLangs, setActiveLangs] = useState<Language[]>(['en']);
+  const [defaultDicts, setDefaultDicts] = useState<DictPair[]>(['en_ru']);
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState<Language | null>(null);
+  const [working, setWorking] = useState<DictPair | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [stats, active] = await Promise.all([
-      getAllLanguageStatus(),
-      getActiveLanguages(),
+    const [stats, defaults] = await Promise.all([
+      getAllDictStatus(),
+      getDefaultDictPairs(),
     ]);
     setStatuses(stats);
-    setActiveLangs(active);
+    setDefaultDicts(defaults);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const toggleActive = useCallback(async (lang: Language) => {
-    const next = activeLangs.includes(lang)
-      ? activeLangs.filter((l) => l !== lang)
-      : [...activeLangs, lang];
-    setActiveLangs(next);
-    await setActiveLanguages(next);
-  }, [activeLangs]);
+  const toggleDefault = useCallback(async (pair: DictPair) => {
+    const next = defaultDicts.includes(pair)
+      ? defaultDicts.filter((p) => p !== pair)
+      : [...defaultDicts, pair];
+    setDefaultDicts(next);
+    await setDefaultDictPairs(next);
+  }, [defaultDicts]);
 
-  const handleDownload = useCallback(async (lang: Language) => {
-    setWorking(lang);
+  const handleDownload = useCallback(async (pair: DictPair) => {
+    setWorking(pair);
     try {
-      const count = await downloadAndImport(lang, (status) => {
+      const count = await downloadAndImport(pair, (status) => {
         setStatuses((prev) =>
           prev.map((s) =>
-            s.language === lang ? { ...s, downloading: status !== 'Done' } : s
+            s.dictPair === pair ? { ...s, downloading: status !== 'Done' } : s
           )
         );
       });
       await load();
-      Alert.alert('Done', `${LANG.find((l) => l.key === lang)?.label} dictionary: ${count.toLocaleString()} words imported`);
+      const meta = DICT_PAIR_META[pair];
+      Alert.alert('Done', `${meta.sourceLabel} → ${meta.targetLabel}: ${count.toLocaleString()} words imported`);
     } catch (err: any) {
       Alert.alert('Error', `Failed to download: ${err.message}`);
     } finally {
@@ -67,18 +60,18 @@ export default function DictionarySettingsScreen() {
     }
   }, [load]);
 
-  const handleDelete = useCallback(async (lang: Language) => {
-    const label = LANG.find((l) => l.key === lang)?.label;
+  const handleDelete = useCallback(async (pair: DictPair) => {
+    const meta = DICT_PAIR_META[pair];
     Alert.alert(
       'Delete dictionary',
-      `Remove ${label}?`,
+      `Remove ${meta.sourceLabel} → ${meta.targetLabel}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteCachedDict(lang);
+            await deleteCachedDict(pair);
             await load();
           },
         },
@@ -98,23 +91,28 @@ export default function DictionarySettingsScreen() {
     <View style={styles.container}>
       <Text style={styles.heading}>DICTIONARIES</Text>
       <Text style={styles.subheading}>
-        Active dictionaries are searched when looking up words.
-        Enable multiple to search across languages.
+        Download bilingual dictionaries. Select defaults — they are used when a book has no custom selection.
+        Tap a book's gear icon to assign specific dictionaries.
       </Text>
 
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {LANG.map(({ key, label, flag }) => {
-          const status = statuses.find((s) => s.language === key);
-          const isActive = activeLangs.includes(key);
+        {ALL_DICT_PAIRS.map((pair) => {
+          const meta = DICT_PAIR_META[pair];
+          const status = statuses.find((s) => s.dictPair === pair);
+          const isDefault = defaultDicts.includes(pair);
           const hasWords = (status?.wordCount ?? 0) > 0;
-          const isWorking = working === key;
+          const isWorking = working === pair;
 
           return (
-            <View key={key} style={[styles.card, isActive && styles.cardActive]}>
+            <View key={pair} style={[styles.card, isDefault && styles.cardActive]}>
               <View style={styles.cardLeft}>
-                <Text style={styles.flag}>{flag}</Text>
+                <View style={styles.flags}>
+                  <Text style={styles.flag}>{meta.sourceFlag}</Text>
+                  <Text style={styles.arrow}>→</Text>
+                  <Text style={styles.flag}>{meta.targetFlag}</Text>
+                </View>
                 <View style={styles.cardInfo}>
-                  <Text style={styles.langName}>{label}</Text>
+                  <Text style={styles.langName}>{meta.sourceLabel} → {meta.targetLabel}</Text>
                   <Text style={styles.langStatus}>
                     {isWorking
                       ? 'Working...'
@@ -131,29 +129,36 @@ export default function DictionarySettingsScreen() {
                 ) : hasWords ? (
                   <TouchableOpacity
                     style={styles.deleteBtn}
-                    onPress={() => handleDelete(key)}
+                    onPress={() => handleDelete(pair)}
                   >
                     <Text style={styles.deleteBtnText}>Delete</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={styles.downloadBtn}
-                    onPress={() => handleDownload(key)}
+                    onPress={() => handleDownload(pair)}
                   >
                     <Text style={styles.downloadBtnText}>Download</Text>
                   </TouchableOpacity>
                 )}
 
                 {hasWords && (
-                  <View style={styles.switchWrap}>
-                    <Switch
-                      value={isActive}
-                      onValueChange={() => toggleActive(key)}
-                      trackColor={{ false: '#e0e0e0', true: '#4A90D9' }}
-                      thumbColor={isActive ? '#fff' : '#f4f3f4'}
-                      ios_backgroundColor="#e0e0e0"
-                    />
-                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.defaultBtn,
+                      isDefault && styles.defaultBtnActive,
+                    ]}
+                    onPress={() => toggleDefault(pair)}
+                  >
+                    <Text
+                      style={[
+                        styles.defaultBtnText,
+                        isDefault && styles.defaultBtnTextActive,
+                      ]}
+                    >
+                      {isDefault ? 'Default' : 'Set default'}
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -208,19 +213,28 @@ const styles = StyleSheet.create({
     borderLeftColor: '#4A90D9',
   },
   cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     flex: 1,
   },
+  flags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   flag: {
-    fontSize: 28,
-    marginRight: 14,
+    fontSize: 24,
+  },
+  arrow: {
+    fontSize: 16,
+    marginHorizontal: 6,
+    color: '#8e8e93',
   },
   cardInfo: {
     flex: 1,
   },
   langName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 2,
@@ -233,9 +247,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  switchWrap: {
-    marginLeft: 4,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   downloadBtn: {
     backgroundColor: '#4A90D9',
@@ -258,5 +271,23 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 13,
     fontWeight: '600',
+  },
+  defaultBtn: {
+    borderWidth: 1,
+    borderColor: '#4A90D9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  defaultBtnActive: {
+    backgroundColor: '#4A90D9',
+  },
+  defaultBtnText: {
+    color: '#4A90D9',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  defaultBtnTextActive: {
+    color: '#fff',
   },
 });

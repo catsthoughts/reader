@@ -1,9 +1,17 @@
 import * as SQLite from 'expo-sqlite';
-import type { Language } from '../types';
+import type { DictPair } from '../types';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const LANGUAGES: Language[] = ['ru', 'en', 'es', 'ro', 'it'];
+const DICT_PAIRS: DictPair[] = ['en_ru', 'es_ru', 'es_en', 'ro_ru', 'it_ru'];
+
+const DICT_TABLES: Record<DictPair, string> = {
+  en_ru: 'dict_en_ru',
+  es_ru: 'dict_es_ru',
+  es_en: 'dict_es_en',
+  ro_ru: 'dict_ro_ru',
+  it_ru: 'dict_it_ru',
+};
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
@@ -15,9 +23,9 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
   await database.execAsync(`PRAGMA journal_mode = WAL;`);
 
-  for (const lang of LANGUAGES) {
+  for (const pair of DICT_PAIRS) {
     await database.execAsync(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS dict_${lang}
+      CREATE VIRTUAL TABLE IF NOT EXISTS ${DICT_TABLES[pair]}
       USING fts5(word, definition, tokenize='unicode61');
     `);
   }
@@ -43,8 +51,7 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
       cover_path TEXT,
       current_position TEXT,
       last_opened TEXT DEFAULT (datetime('now')),
-      progress REAL DEFAULT 0,
-      dictionary_language TEXT
+      progress REAL DEFAULT 0
     );
   `);
 
@@ -56,7 +63,16 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   `);
 
   await database.execAsync(`
-    INSERT OR IGNORE INTO app_settings (key, value) VALUES ('active_languages', 'en');
+    CREATE TABLE IF NOT EXISTS book_dictionaries (
+      book_id INTEGER NOT NULL,
+      dict_pair TEXT NOT NULL,
+      PRIMARY KEY (book_id, dict_pair),
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    );
+  `);
+
+  await database.execAsync(`
+    INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_dictionaries', 'en_ru');
   `);
 
   await migrateV1(database);
@@ -67,12 +83,29 @@ async function migrateV1(database: SQLite.SQLiteDatabase): Promise<void> {
     const row = await database.getFirstAsync<{ name: string }>(
       "SELECT name FROM pragma_table_info('books') WHERE name = 'dictionary_language'"
     );
-    if (!row) {
-      await database.execAsync("ALTER TABLE books ADD COLUMN dictionary_language TEXT");
+    if (row) {
+      await database.execAsync("ALTER TABLE books DROP COLUMN dictionary_language");
     }
+  } catch (_) {}
+
+  try {
+    await database.execAsync(`
+      CREATE TABLE IF NOT EXISTS book_dictionaries (
+        book_id INTEGER NOT NULL,
+        dict_pair TEXT NOT NULL,
+        PRIMARY KEY (book_id, dict_pair),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+      )
+    `);
+  } catch (_) {}
+
+  try {
+    await database.execAsync(`
+      INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_dictionaries', 'en_ru')
+    `);
   } catch (_) {}
 }
 
-export function getDictTableName(language: Language): string {
-  return `dict_${language}`;
+export function getDictTableName(dictPair: DictPair): string {
+  return DICT_TABLES[dictPair];
 }

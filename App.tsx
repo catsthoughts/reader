@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './src/screens/HomeScreen';
 import ReaderScreen from './src/screens/ReaderScreen';
 import DictionarySettingsScreen from './src/screens/DictionarySettingsScreen';
+import BookDictionaryConfigScreen from './src/screens/BookDictionaryConfigScreen';
 import type { RootStackParamList } from './src/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -37,6 +38,11 @@ export default function App() {
             name="DictionarySettings"
             component={DictionarySettingsScreen}
             options={{ title: 'Dictionaries' }}
+          />
+          <Stack.Screen
+            name="BookDictionaryConfig"
+            component={BookDictionaryConfigScreen}
+            options={{ title: 'Dictionary set' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

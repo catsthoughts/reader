@@ -1,6 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import JSZip from 'jszip';
-import type { Language } from '../types';
 
 interface EpubMetadata {
   title: string;
