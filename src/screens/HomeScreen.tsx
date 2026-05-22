@@ -7,6 +7,10 @@ import { getAllBooks, upsertBook, deleteBook } from '../database/books';
 import { parseEpubMetadata } from '../utils/epub';
 import type { Book } from '../types';
 
+interface HomeScreenProps {
+  navigation: any;
+}
+
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [books, setBooks] = useState<Book[]>([]);
 

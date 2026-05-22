@@ -3,14 +3,28 @@ import type { DictPair } from '../types';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const DICT_PAIRS: DictPair[] = ['en_ru', 'es_ru', 'es_en', 'ro_ru', 'it_ru'];
+const DICT_PAIRS: DictPair[] = ['en_ru', 'es_ru', 'es_en', 'it_ru',
+  'ru_en', 'ru_es', 'en_es',
+  'fr_ru', 'ru_fr', 'fr_en', 'en_fr',
+  'de_ru', 'ru_de', 'de_en', 'en_de',
+];
 
 const DICT_TABLES: Record<DictPair, string> = {
   en_ru: 'dict_en_ru',
   es_ru: 'dict_es_ru',
   es_en: 'dict_es_en',
-  ro_ru: 'dict_ro_ru',
   it_ru: 'dict_it_ru',
+  ru_en: 'dict_ru_en',
+  ru_es: 'dict_ru_es',
+  en_es: 'dict_en_es',
+  fr_ru: 'dict_fr_ru',
+  ru_fr: 'dict_ru_fr',
+  fr_en: 'dict_fr_en',
+  en_fr: 'dict_en_fr',
+  de_ru: 'dict_de_ru',
+  ru_de: 'dict_ru_de',
+  de_en: 'dict_de_en',
+  en_de: 'dict_en_de',
 };
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -76,6 +90,7 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   `);
 
   await migrateV1(database);
+  await migrateV2(database);
 }
 
 async function migrateV1(database: SQLite.SQLiteDatabase): Promise<void> {
@@ -104,6 +119,24 @@ async function migrateV1(database: SQLite.SQLiteDatabase): Promise<void> {
       INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_dictionaries', 'en_ru')
     `);
   } catch (_) {}
+}
+
+async function migrateV2(database: SQLite.SQLiteDatabase): Promise<void> {
+  const extraColumns = ['transcription', 'pos', 'details', 'morphology'];
+  for (const pair of DICT_PAIRS) {
+    const table = DICT_TABLES[pair];
+    for (const col of extraColumns) {
+      try {
+        const row = await database.getFirstAsync<{ name: string }>(
+          `SELECT name FROM pragma_table_info('${table}') WHERE name = ?`,
+          [col]
+        );
+        if (!row) {
+          await database.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT;`);
+        }
+      } catch (_) {}
+    }
+  }
 }
 
 export function getDictTableName(dictPair: DictPair): string {

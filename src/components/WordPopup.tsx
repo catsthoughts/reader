@@ -9,6 +9,26 @@ import {
 } from 'react-native';
 import type { DictionaryEntry, BookWord } from '../types';
 
+const POS_COLORS: Record<string, string> = {
+  n: '#007AFF',
+  v: '#34C759',
+  adj: '#FF9500',
+  adv: '#FF3B30',
+  pn: '#AF52DE',
+  interjection: '#5856D6',
+  suffix: '#8E8E93',
+  prefix: '#8E8E93',
+  pron: '#FF6482',
+  prep: '#00C7BE',
+  conj: '#FF9500',
+  num: '#FF9500',
+  det: '#007AFF',
+};
+
+function getPosColor(pos: string): string {
+  return POS_COLORS[pos.toLowerCase()] || '#8E8E93';
+}
+
 interface WordPopupProps {
   visible: boolean;
   word: string;
@@ -19,7 +39,7 @@ interface WordPopupProps {
 }
 
 const LEVELS: { level: 1 | 2 | 3 | 4 | 5; label: string; color: string }[] = [
-  { level: 1, label: 'Don\'t know', color: '#FF3B30' },
+  { level: 1, label: "Don't know", color: '#FF3B30' },
   { level: 2, label: 'Heard it', color: '#FF9500' },
   { level: 3, label: 'Recognize', color: '#007AFF' },
   { level: 4, label: 'Almost know', color: '#34C759' },
@@ -36,6 +56,11 @@ export default function WordPopup({
 }: WordPopupProps) {
   const currentLevel = (userWord?.knowledgeLevel ?? 1) as 1 | 2 | 3 | 4 | 5;
   const viewCount = userWord?.viewCount ?? 0;
+
+  const transcription = dictionaryEntry?.transcription;
+  const pos = dictionaryEntry?.pos;
+  const definition = dictionaryEntry?.definition;
+  const details = dictionaryEntry?.details;
 
   return (
     <Modal
@@ -55,8 +80,18 @@ export default function WordPopup({
           onPress={() => {}}
         >
           <View style={styles.header}>
-            <View>
-              <Text style={styles.wordText}>{word}</Text>
+            <View style={styles.headerLeft}>
+              <View style={styles.wordRow}>
+                <Text style={styles.wordText}>{word}</Text>
+                {pos ? (
+                  <View style={[styles.posBadge, { backgroundColor: getPosColor(pos) }]}>
+                    <Text style={styles.posText}>{pos}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {transcription ? (
+                <Text style={styles.transcription}>{transcription}</Text>
+              ) : null}
               <Text style={styles.viewCount}>
                 {viewCount} {viewCount === 1 ? 'view' : 'views'}
               </Text>
@@ -71,15 +106,19 @@ export default function WordPopup({
             bounces={false}
             showsVerticalScrollIndicator={false}
           >
-            {dictionaryEntry ? (
-              <Text style={styles.definitionText}>
-                {dictionaryEntry.definition}
-              </Text>
-            ) : (
+            {definition ? (
+              <Text style={styles.definitionText}>{definition}</Text>
+            ) : null}
+
+            {details ? (
+              <Text style={styles.detailsText}>{details}</Text>
+            ) : null}
+
+            {!dictionaryEntry ? (
               <Text style={styles.noDefinition}>
                 Definition not found in dictionary
               </Text>
-            )}
+            ) : null}
           </ScrollView>
 
           <View style={styles.levelSection}>
@@ -128,10 +167,36 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  headerLeft: {
+    flex: 1,
+    marginRight: 16,
+  },
+  wordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   wordText: {
     fontSize: 28,
     fontWeight: '700',
     color: '#1a1a1a',
+  },
+  posBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  posText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  transcription: {
+    fontSize: 15,
+    color: '#666',
+    fontFamily: 'Menlo',
+    marginTop: 4,
   },
   viewCount: {
     fontSize: 13,
@@ -152,13 +217,20 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   definitionScroll: {
-    maxHeight: 180,
+    maxHeight: 200,
     marginBottom: 16,
   },
   definitionText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#444',
+    fontSize: 18,
+    lineHeight: 26,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  detailsText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
+    marginTop: 8,
   },
   noDefinition: {
     fontSize: 14,

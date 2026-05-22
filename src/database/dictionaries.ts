@@ -1,17 +1,37 @@
 import { getDatabase, getDictTableName } from './database';
 import type { DictPair, DictionaryEntry } from '../types';
 
+const ALL_COLS = 'word, definition, transcription, pos, details, morphology';
+
+function mapRow(row: {
+  word: string;
+  definition?: string;
+  transcription?: string;
+  pos?: string;
+  details?: string;
+  morphology?: string;
+}): DictionaryEntry {
+  return {
+    word: row.word,
+    definition: row.definition ?? '',
+    transcription: row.transcription ?? undefined,
+    pos: row.pos ?? undefined,
+    details: row.details ?? undefined,
+    morphology: row.morphology ?? undefined,
+  };
+}
+
 export async function lookupWord(
   word: string,
   dictPair: DictPair
 ): Promise<DictionaryEntry | null> {
   const db = await getDatabase();
   const table = getDictTableName(dictPair);
-  const row = await db.getFirstAsync<{ word: string; definition: string }>(
-    `SELECT word, definition FROM ${table} WHERE word MATCH ? LIMIT 1`,
+  const row = await db.getFirstAsync<any>(
+    `SELECT ${ALL_COLS} FROM ${table} WHERE word MATCH ? LIMIT 1`,
     [word]
   );
-  return row ?? null;
+  return row ? mapRow(row) : null;
 }
 
 export async function lookupWordInDictPairs(
@@ -37,13 +57,13 @@ export async function bulkLookupWords(
   if (uniqueWords.length === 0) return result;
 
   const placeholders = uniqueWords.map(() => '?').join(',');
-  const rows = await db.getAllAsync<{ word: string; definition: string }>(
-    `SELECT word, definition FROM ${table} WHERE word IN (${placeholders})`,
+  const rows = await db.getAllAsync<any>(
+    `SELECT ${ALL_COLS} FROM ${table} WHERE word IN (${placeholders})`,
     uniqueWords
   );
 
   for (const row of rows) {
-    result.set(row.word.toLowerCase(), row);
+    result.set(row.word.toLowerCase(), mapRow(row));
   }
 
   return result;
@@ -58,8 +78,8 @@ export async function insertDictionaryEntries(
 
   for (const entry of entries) {
     await db.runAsync(
-      `INSERT INTO ${table} (word, definition) VALUES (?, ?)`,
-      [entry.word, entry.definition]
+      `INSERT INTO ${table} (word, definition, transcription, pos, details, morphology) VALUES (?, ?, ?, ?, ?, ?)`,
+      [entry.word, entry.definition, entry.transcription ?? null, entry.pos ?? null, entry.details ?? null, entry.morphology ?? null]
     );
   }
 }
@@ -78,6 +98,33 @@ export async function importDictionaryFromJSON(
     await db.runAsync(
       `INSERT INTO ${table} (word, definition) VALUES (?, ?)`,
       [entry.word, entry.definition]
+    );
+    count++;
+  }
+
+  return count;
+}
+
+export async function importEnrichedDictionary(
+  dictPair: DictPair,
+  entries: {
+    word: string;
+    definition?: string;
+    transcription?: string;
+    pos?: string;
+    details?: string;
+  }[]
+): Promise<number> {
+  const db = await getDatabase();
+  const table = getDictTableName(dictPair);
+
+  await db.execAsync(`DELETE FROM ${table};`);
+
+  let count = 0;
+  for (const entry of entries) {
+    await db.runAsync(
+      `INSERT INTO ${table} (word, definition, transcription, pos, details) VALUES (?, ?, ?, ?, ?)`,
+      [entry.word, entry.definition ?? '', entry.transcription ?? null, entry.pos ?? null, entry.details ?? null]
     );
     count++;
   }

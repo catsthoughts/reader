@@ -1,15 +1,19 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { importDictionaryFromJSON, getDictionaryWordCount } from '../database/dictionaries';
+import { importEnrichedDictionary, importDictionaryFromJSON, getDictionaryWordCount } from '../database/dictionaries';
 import type { DictPair, DictStatus } from '../types';
 import { ALL_DICT_PAIRS } from '../types';
 
-const GITHUB_REPO = 'catsthoughts/reader';
+const GITHUB_RAW_URL = `https://raw.githubusercontent.com/catsthoughts/reader/dictionary-management/dictionaries`;
 const DICT_DIR = FileSystem.documentDirectory + 'dicts/';
 
-const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/dictionary-management/dictionaries`;
-
-export function getDictCachePath(dictPair: DictPair): string {
+function getDictCachePath(dictPair: DictPair): string {
   return `${DICT_DIR}${dictPair}.json`;
+}
+
+async function downloadFile(url: string, dest: string): Promise<void> {
+  const download = FileSystem.createDownloadResumable(url, dest);
+  const result = await download.downloadAsync();
+  if (!result) throw new Error('Download failed');
 }
 
 export async function downloadDictionary(dictPair: DictPair): Promise<void> {
@@ -17,18 +21,17 @@ export async function downloadDictionary(dictPair: DictPair): Promise<void> {
   const dest = getDictCachePath(dictPair);
 
   await FileSystem.makeDirectoryAsync(DICT_DIR, { intermediates: true });
-
-  const download = FileSystem.createDownloadResumable(url, dest);
-  const result = await download.downloadAsync();
-  if (!result) {
-    throw new Error('Download failed — no response');
-  }
+  await downloadFile(url, dest);
 }
 
 export async function importDictionary(dictPair: DictPair): Promise<number> {
   const path = getDictCachePath(dictPair);
   const content = await FileSystem.readAsStringAsync(path);
-  const entries: { word: string; definition: string }[] = JSON.parse(content);
+  const entries: any[] = JSON.parse(content);
+
+  if (entries.length > 0 && 'transcription' in entries[0]) {
+    return await importEnrichedDictionary(dictPair, entries);
+  }
   return await importDictionaryFromJSON(dictPair, entries);
 }
 
