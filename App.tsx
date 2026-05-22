@@ -7,6 +7,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import ReaderScreen from './src/screens/ReaderScreen';
 import DictionarySettingsScreen from './src/screens/DictionarySettingsScreen';
 import BookDictionaryConfigScreen from './src/screens/BookDictionaryConfigScreen';
+import UserWordsScreen from './src/screens/UserWordsScreen';
 import type { RootStackParamList } from './src/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,6 +44,11 @@ export default function App() {
             name="BookDictionaryConfig"
             component={BookDictionaryConfigScreen}
             options={{ title: 'Dictionary set' }}
+          />
+          <Stack.Screen
+            name="UserWords"
+            component={UserWordsScreen}
+            options={{ title: 'My Words' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

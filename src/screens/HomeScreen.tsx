@@ -17,8 +17,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('DictionarySettings')} style={styles.settingsButton}>
-          <Text style={styles.settingsButtonText}>⋯</Text>
+        <TouchableOpacity
+          onPress={() =>
+            Alert.alert('', '', [
+              { text: 'My Words', onPress: () => navigation.navigate('UserWords') },
+              { text: 'Dictionary Settings', onPress: () => navigation.navigate('DictionarySettings') },
+              { text: 'Cancel', style: 'cancel' },
+            ])
+          }
+          style={styles.headerBtn}
+        >
+          <Text style={styles.settingsBtnText}>⋯</Text>
         </TouchableOpacity>
       ),
     });
@@ -121,10 +130,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  settingsButton: {
+  headerBtn: {
     padding: 8,
   },
-  settingsButtonText: {
+  settingsBtnText: {
     fontSize: 22,
     color: '#1a1a1a',
   },

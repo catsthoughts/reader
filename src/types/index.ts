@@ -81,4 +81,5 @@ export type RootStackParamList = {
   Reader: { bookId: number };
   DictionarySettings: undefined;
   BookDictionaryConfig: { bookId: number; bookTitle: string };
+  UserWords: undefined;
 };

@@ -91,7 +91,11 @@ export async function importDictionaryFromJSON(
   const db = await getDatabase();
   const table = getDictTableName(dictPair);
 
-  await db.execAsync(`DELETE FROM ${table};`);
+  await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+  await db.execAsync(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS ${table}
+    USING fts5(word, definition, tokenize='unicode61');
+  `);
 
   let count = 0;
   for (const entry of entries) {
@@ -118,7 +122,11 @@ export async function importEnrichedDictionary(
   const db = await getDatabase();
   const table = getDictTableName(dictPair);
 
-  await db.execAsync(`DELETE FROM ${table};`);
+  await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+  await db.execAsync(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS ${table}
+    USING fts5(word, definition, transcription, pos, details, morphology, tokenize='unicode61');
+  `);
 
   let count = 0;
   for (const entry of entries) {

@@ -1,6 +1,36 @@
 import { getDatabase } from './database';
 import type { BookWord } from '../types';
 
+export interface LanguageStats {
+  language: string;
+  total: number;
+  levels: Record<number, number>;
+}
+
+export async function getUserWordsStats(): Promise<LanguageStats[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ language: string; knowledgeLevel: number; count: number }>(
+    `SELECT language, knowledge_level as knowledgeLevel, COUNT(*) as count
+     FROM user_words GROUP BY language, knowledge_level ORDER BY language, knowledge_level`
+  );
+
+  const map = new Map<string, LanguageStats>();
+  for (const r of rows) {
+    if (!map.has(r.language)) {
+      map.set(r.language, { language: r.language, total: 0, levels: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
+    }
+    const s = map.get(r.language)!;
+    s.levels[r.knowledgeLevel] = r.count;
+    s.total += r.count;
+  }
+  return Array.from(map.values());
+}
+
+export async function resetUserWordsForLanguage(language: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM user_words WHERE language = ?', [language]);
+}
+
 export async function upsertUserWord(
   word: string,
   language: string,

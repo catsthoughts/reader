@@ -40,7 +40,7 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   for (const pair of DICT_PAIRS) {
     await database.execAsync(`
       CREATE VIRTUAL TABLE IF NOT EXISTS ${DICT_TABLES[pair]}
-      USING fts5(word, definition, tokenize='unicode61');
+      USING fts5(word, definition, transcription, pos, details, morphology, tokenize='unicode61');
     `);
   }
 
@@ -88,55 +88,6 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
   await database.execAsync(`
     INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_dictionaries', 'en_ru');
   `);
-
-  await migrateV1(database);
-  await migrateV2(database);
-}
-
-async function migrateV1(database: SQLite.SQLiteDatabase): Promise<void> {
-  try {
-    const row = await database.getFirstAsync<{ name: string }>(
-      "SELECT name FROM pragma_table_info('books') WHERE name = 'dictionary_language'"
-    );
-    if (row) {
-      await database.execAsync("ALTER TABLE books DROP COLUMN dictionary_language");
-    }
-  } catch (_) {}
-
-  try {
-    await database.execAsync(`
-      CREATE TABLE IF NOT EXISTS book_dictionaries (
-        book_id INTEGER NOT NULL,
-        dict_pair TEXT NOT NULL,
-        PRIMARY KEY (book_id, dict_pair),
-        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-      )
-    `);
-  } catch (_) {}
-
-  try {
-    await database.execAsync(`
-      INSERT OR IGNORE INTO app_settings (key, value) VALUES ('default_dictionaries', 'en_ru')
-    `);
-  } catch (_) {}
-}
-
-async function migrateV2(database: SQLite.SQLiteDatabase): Promise<void> {
-  const extraColumns = ['transcription', 'pos', 'details', 'morphology'];
-  for (const pair of DICT_PAIRS) {
-    const table = DICT_TABLES[pair];
-    for (const col of extraColumns) {
-      try {
-        const row = await database.getFirstAsync<{ name: string }>(
-          `SELECT name FROM pragma_table_info('${table}') WHERE name = ?`,
-          [col]
-        );
-        if (!row) {
-          await database.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT;`);
-        }
-      } catch (_) {}
-    }
-  }
 }
 
 export function getDictTableName(dictPair: DictPair): string {
