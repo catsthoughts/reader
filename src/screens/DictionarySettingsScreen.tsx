@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import type { DictPair, DictStatus } from '../types';
 import { ALL_DICT_PAIRS, DICT_PAIR_META } from '../types';
-import { getAllDictStatus, downloadAndImport, deleteCachedDict } from '../services/dictionaryDownload';
+import { getAllDictStatus, downloadAndImport, deleteDictionary } from '../services/dictionaryDownload';
 import { getDefaultDictPairs, setDefaultDictPairs } from '../database/books';
 
 export default function DictionarySettingsScreen() {
@@ -71,7 +71,7 @@ export default function DictionarySettingsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteCachedDict(pair);
+            await deleteDictionary(pair);
             await load();
           },
         },
@@ -127,12 +127,20 @@ export default function DictionarySettingsScreen() {
                 {isWorking ? (
                   <ActivityIndicator size="small" color="#4A90D9" />
                 ) : hasWords ? (
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDelete(pair)}
-                  >
-                    <Text style={styles.deleteBtnText}>Delete</Text>
-                  </TouchableOpacity>
+                  <View style={styles.btnGroup}>
+                    <TouchableOpacity
+                      style={styles.updateBtn}
+                      onPress={() => handleDownload(pair)}
+                    >
+                      <Text style={styles.updateBtnText}>Update</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => handleDelete(pair)}
+                    >
+                      <Text style={styles.deleteBtnText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <TouchableOpacity
                     style={styles.downloadBtn}
@@ -250,6 +258,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
+  btnGroup: {
+    flexDirection: 'row',
+    gap: 6,
+  },
   downloadBtn: {
     backgroundColor: '#4A90D9',
     paddingHorizontal: 14,
@@ -257,6 +269,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   downloadBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  updateBtn: {
+    backgroundColor: '#34C759',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  updateBtnText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',

@@ -142,3 +142,13 @@ export async function getDictionaryWordCount(
   );
   return row?.count ?? 0;
 }
+
+export async function deleteDictionaryTable(dictPair: DictPair): Promise<void> {
+  const db = await getDatabase();
+  const table = getDictTableName(dictPair);
+  await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+  await db.execAsync(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS ${table}
+    USING fts5(word, definition, transcription, pos, details, morphology, tokenize='unicode61');
+  `);
+}

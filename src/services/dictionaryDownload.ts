@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { importEnrichedDictionary, importDictionaryFromJSON, getDictionaryWordCount } from '../database/dictionaries';
+import { importEnrichedDictionary, importDictionaryFromJSON, getDictionaryWordCount, deleteDictionaryTable } from '../database/dictionaries';
 import type { DictPair, DictStatus } from '../types';
 import { ALL_DICT_PAIRS } from '../types';
 
@@ -52,6 +52,11 @@ export async function downloadAndImport(
 export async function deleteCachedDict(dictPair: DictPair): Promise<void> {
   const path = getDictCachePath(dictPair);
   await FileSystem.deleteAsync(path, { idempotent: true });
+}
+
+export async function deleteDictionary(dictPair: DictPair): Promise<void> {
+  await deleteDictionaryTable(dictPair);
+  await deleteCachedDict(dictPair);
 }
 
 export async function getAllDictStatus(): Promise<DictStatus[]> {
