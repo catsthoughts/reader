@@ -10,3 +10,4 @@ dist/
 web-build/
 .DS_Store
 *.tsbuildinfo
+.venv/
